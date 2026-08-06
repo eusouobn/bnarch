@@ -1,22 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
-# ╔══════════════════════════════════════════════════════════╗
-# ║  bnarch - Instalador Arch Linux (eusouobn)             ║
-# ║  Versão moderna com suporte a Niri + Labwc + Hyprland  ║
-# ╚══════════════════════════════════════════════════════════╝
+# bnarch - Instalador Arch Linux (eusouobn)
+# Versão moderna com suporte a Niri + Labwc + Hyprland
 
-# ── Cores ──────────────────────────────────────────────────
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'
-BLUE='\033[0;34m'; CYAN='\033[0;36m'; BOLD='\033[1m'
-NC='\033[0m'
-
-title()  { clear; echo -e "\n${BLUE}${BOLD}╔══════════════════════════════════╗${NC}"; echo -e "${BLUE}${BOLD}║  $1${NC}"; echo -e "${BLUE}${BOLD}╚══════════════════════════════════╝${NC}\n"; }
-info()   { echo -e "  ${CYAN}▸${NC} $1"; }
-ok()     { echo -e "  ${GREEN}✔${NC} $1"; }
-warn()   { echo -e "  ${YELLOW}⚠${NC} $1"; }
-fail()   { echo -e "  ${RED}✖${NC} $1"; exit 1; }
-quote()  { echo -e "\n  ─────────────────────────────────────\n"; }
+# ── Funções de saída (sem cores, terminal normal) ──────────
+title()  { echo ""; echo "  ==== $1 ===="; echo ""; }
+info()   { echo "  → $1"; }
+ok()     { echo "  ✔ $1"; }
+warn()   { echo "  ⚠ $1"; }
+fail()   { echo "  ✖ $1"; exit 1; }
+quote()  { echo ""; }
 
 # ── Verificações iniciais ──────────────────────────────────
 if [ "$EUID" -ne 0 ]; then
@@ -78,7 +72,7 @@ read -rp "  Nome de usuário: " USERNAME
 title "3/12 — DISCO DE INSTALAÇÃO"
 
 DEVICES_LIST=$(lsblk -nd --output NAME | grep -E "sd|hd|vd|nvme|mmcblk")
-echo -e "${BOLD}Dispositivos disponíveis:${NC}\n"
+echo "Dispositivos disponíveis:"
 
 for disk in $DEVICES_LIST; do
   MODEL=$(lsblk -dno MODEL "/dev/$disk" 2>/dev/null | xargs)
@@ -88,7 +82,7 @@ for disk in $DEVICES_LIST; do
   TYPE=$([ "$ROTA" = "0" ] && echo "SSD" || echo "HDD")
   PARTS=$(lsblk -no NAME "/dev/$disk" 2>/dev/null | tail -n +2 | wc -l)
 
-  echo -e "  ${BOLD}$disk${NC}"
+  echo "  $disk"
   echo "    Modelo:  $MODEL"
   echo "    Serial:  $SERIAL"
   echo "    Tamanho: $SIZE ($TYPE)"
@@ -138,7 +132,7 @@ done
 
 if [ "$SEPARATE_HOME" = "y" ]; then
   echo ""
-  echo -e "${BOLD}Dispositivos disponíveis:${NC}\n"
+  echo "Dispositivos disponíveis:"
 
   for disk in $DEVICES_LIST; do
     MODEL=$(lsblk -dno MODEL "/dev/$disk" 2>/dev/null | xargs)
@@ -147,7 +141,7 @@ if [ "$SEPARATE_HOME" = "y" ]; then
     ROTA=$(lsblk -dno ROTA "/dev/$disk" 2>/dev/null)
     TYPE=$([ "$ROTA" = "0" ] && echo "SSD" || echo "HDD")
 
-    echo -e "  ${BOLD}$disk${NC}"
+    echo "  $disk"
     echo "    Modelo:  $MODEL"
     echo "    Serial:  $SERIAL"
     echo "    Tamanho: $SIZE ($TYPE)"
@@ -219,7 +213,7 @@ HAS_AMD=$(echo "$GPU_INFO" | grep -ci "amd\|radeon" || true)
 HAS_INTEL=$(echo "$GPU_INFO" | grep -ci intel || true)
 
 if [ "$HAS_NVIDIA" -gt 0 ]; then
-  echo -e "  ${BOLD}NVIDIA detectada!${NC}"
+  echo "  NVIDIA detectada!"
   echo ""
   echo "  Driver recomendado para Wayland/Niri:"
   echo "    1) Nvidia-Open  (recomendado — open-source)"
@@ -244,7 +238,7 @@ if [ "$HAS_NVIDIA" -gt 0 ]; then
     VIDEODRIVER="$GPU_CHOICE"
   fi
 else
-  echo -e "  GPU: ${GPU_INFO%% *}"
+  echo "  GPU: ${GPU_INFO%% *}"
   echo ""
 
   if [ "$HAS_AMD" -gt 0 ]; then
@@ -275,13 +269,13 @@ done
 # ══════════════════════════════════════════════════════════
 title "8/12 — INTERFACE GRÁFICA"
 
-echo -e "  ${BOLD}Desktop Environments:${NC}"
+echo "Desktop Environments:"
 echo "    1) Budgie      5) LXDE      9) XFCE"
 echo "    2) Cinnamon     6) LXQT"
 echo "    3) Deepin       7) MATE"
 echo "    4) GNOME        8) Plasma"
 echo ""
-echo -e "  ${BOLD}Window Managers:${NC}"
+echo "Window Managers:"
 echo "    10) Niri + Noctalia Shell (Wayland)"
 echo "    11) Labwc (Wayland)"
 echo "    12) Hyprland (Wayland)"
@@ -317,7 +311,7 @@ done
 # ══════════════════════════════════════════════════════════
 title "11/12 — CONFIRMAÇÃO"
 
-echo -e "${BOLD}Resumo da instalação:${NC}\n"
+echo "Resumo da instalação:"
 echo "  Hostname:    $HOSTNAME"
 echo "  Usuário:     $USERNAME"
 echo "  Disco:       /dev/$INSTDISK"
@@ -329,7 +323,7 @@ echo "  Desktop:     $DE"
 echo "  Áudio:       $AUDIO"
 echo "  Kernel:      $KERNEL"
 echo ""
-echo -e "  ${RED}${BOLD}⚠ ATENÇÃO: O disco /dev/$INSTDISK será APAGADO!${NC}"
+echo "  ⚠ ATENÇÃO: O disco /dev/$INSTDISK será APAGADO!"
 echo ""
 
 read -rp "  Confirmar instalação? (s/N): " CONFIRM
@@ -804,43 +798,40 @@ arch-chroot /mnt xdg-user-dirs-update 2>/dev/null || true
 
 # ── Senhas ─────────────────────────────────────────────────
 echo ""
-echo -e "${YELLOW}${BOLD}Defina as senhas:${NC}"
-echo -e "  ${CYAN}▸${NC} Senha do usuário $USERNAME:"
+echo "Defina as senhas:"
+echo "  → Senha do usuário $USERNAME:"
 arch-chroot /mnt passwd "$USERNAME"
 
-echo -e "  ${CYAN}▸${NC} Senha do root:"
+echo "  → Senha do root:"
 arch-chroot /mnt passwd
 
 # ── Concluído ──────────────────────────────────────────────
-clear
 echo ""
-echo -e "${GREEN}${BOLD}"
-echo "  ╔══════════════════════════════════════════╗"
-echo "  ║        INSTALAÇÃO CONCLUÍDA!             ║"
-echo "  ╚══════════════════════════════════════════╝"
-echo -e "${NC}"
+echo "  ========================================"
+echo "          INSTALAÇÃO CONCLUÍDA!"
+echo "  ========================================"
 echo ""
-echo -e "  Reinicie o sistema: ${BOLD}reboot${NC}"
+echo "  Reinicie o sistema: reboot"
 echo ""
 
 if [ "$DE" = "Niri" ]; then
-  echo -e "  ${YELLOW}Após reiniciar:${NC}"
-  echo -e "  1. Faça login como $USERNAME"
-  echo -e "  2. Execute: ${BOLD}bash ~/scripts/niri.sh${NC}"
+  echo "  Após reiniciar:"
+  echo "  1. Faça login como $USERNAME"
+  echo "  2. Execute: bash ~/scripts/niri.sh"
   echo ""
 fi
 
 if [ "$DE" = "Labwc" ]; then
-  echo -e "  ${YELLOW}Após reiniciar:${NC}"
-  echo -e "  1. Faça login como $USERNAME"
-  echo -e "  2. Execute: ${BOLD}bash ~/scripts/labwc.sh${NC}"
+  echo "  Após reiniciar:"
+  echo "  1. Faça login como $USERNAME"
+  echo "  2. Execute: bash ~/scripts/labwc.sh"
   echo ""
 fi
 
 if [ "$DE" = "Hyprland" ]; then
-  echo -e "  ${YELLOW}Após reiniciar:${NC}"
-  echo -e "  1. Faça login como $USERNAME"
-  echo -e "  2. Execute: ${BOLD}bash ~/scripts/hyprland.sh${NC}"
+  echo "  Após reiniciar:"
+  echo "  1. Faça login como $USERNAME"
+  echo "  2. Execute: bash ~/scripts/hyprland.sh"
   echo ""
 fi
 
