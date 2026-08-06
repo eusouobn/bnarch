@@ -1427,9 +1427,43 @@ Xft/Hinting 1
 Xft/HintStyle hintslight
 Xft/rgba rgb
 XSETEOF
-  ok "~/.xsettingsd criado com DPI padrão (96)"
-  info "Para configurar manualmente: bash ~/.config/scripts/monitor-config.sh"
+   ok "~/.xsettingsd criado com DPI padrão (96)"
+   info "Para configurar manualmente: bash ~/.config/scripts/monitor-config.sh"
+ fi
+
+# ──────────────────────────────────────────────
+# 13b. MangoHud (overlay FPS)
+# ──────────────────────────────────────────────
+step "🎮 Configurando MangoHud..."
+info "Gera ~/.config/MangoHud/MangoHud.conf com CPU/GPU detectados automaticamente"
+
+MANGOHUD_SCRIPT="$(dirname "$0")/mangohud-config.sh"
+if [ -f "$MANGOHUD_SCRIPT" ]; then
+  bash "$MANGOHUD_SCRIPT" || warn "Falha ao gerar config do MangoHud"
+else
+  warn "mangohud-config.sh não encontrado ao lado do niri.sh"
 fi
+
+# Perguntar se quer habilitar globalmente (padrão: Sim — só apertar Enter)
+ENV_FILE="$HOME/.config/environment.d/95-mangohud.conf"
+echo ""
+echo -n "  Habilitar MangoHud globalmente (MANGOHUD=1 em todos os apps)? [S/n]: "
+read -r ENABLE_MANGOHUD
+case "${ENABLE_MANGOHUD:-S}" in
+  s|S|y|Y|"")
+    if grep -q "^MANGOHUD=1" "$ENV_FILE" 2>/dev/null; then
+      ok "MANGOHUD=1 já está no environment do Niri"
+    else
+      mkdir -p "$HOME/.config/environment.d"
+      echo "MANGOHUD=1" >> "$ENV_FILE"
+      ok "MANGOHUD=1 adicionado ao environment do Niri (reinicie a sessão para valer)"
+    fi
+    ;;
+  *)
+    warn "MangoHud não habilitado globalmente — use Shift_R+F12 para alternar por jogo"
+    ;;
+esac
+quote
 
 # ──────────────────────────────────────────────
 # 14. Final — escolha do usuário
