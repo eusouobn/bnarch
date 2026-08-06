@@ -72,6 +72,24 @@ read -rp "  Nome de usuário: " USERNAME
 title "3/12 — DISCO DE INSTALAÇÃO"
 
 DEVICES_LIST=$(lsblk -nd --output NAME | grep -E "sd|hd|vd|nvme|mmcblk")
+
+# Detectar discos Ventoy (pen drive de instalação) e excluí-los da seleção
+is_ventoy_disk() {
+  lsblk -nro NAME,LABEL "/dev/$1" 2>/dev/null | \
+    awk 'NR>1 && tolower($2) ~ /ventoy|vtoyefi/' | grep -q .
+}
+
+FILTERED_LIST=""
+for disk in $DEVICES_LIST; do
+  if is_ventoy_disk "$disk"; then
+    warn "Disco Ventoy detectado: $disk — excluído da seleção"
+  else
+    FILTERED_LIST="$FILTERED_LIST $disk"
+  fi
+done
+DEVICES_LIST=$FILTERED_LIST
+[ -z "$DEVICES_LIST" ] && fail "Nenhum disco disponível (todos eram Ventoy)"
+
 echo "Dispositivos disponíveis:"
 
 for disk in $DEVICES_LIST; do
