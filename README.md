@@ -12,7 +12,7 @@ bnarch/
     ├── labwc.sh         # Pós-instalação do Labwc (clona dotfiles de eusouobn/labwc)
     ├── hyprland.sh      # Pós-instalação do Hyprland (clona dotfiles de eusouobn/hyprland)
     ├── github.sh        # Configuração de identidade git + login do GitHub CLI
-    └── mangohud-config.sh  # Gera config do MangoHud (usado pelo Labwc)
+    └── mangohud-config.sh  # Gera config do MangoHud (copiado em todos os WMs)
 ```
 
 Os dotfiles de cada WM ficam nos respectivos repos; o script de pós-instalação
@@ -33,9 +33,9 @@ Durante a instalação, selecione o ambiente em **8/12 — Interface Gráfica**:
 - `11) Labwc`
 - `12) Hyprland`
 
-O instalador baixa automaticamente para `~/scripts/` apenas o script de
-pós-instalação correspondente ao ambiente escolhido (além de `github.sh` e
-`mangohud-config.sh` quando aplicável).
+O instalador baixa automaticamente para `~/scripts/` o script de
+pós-instalação correspondente ao ambiente escolhido, além de `github.sh` e
+`mangohud-config.sh` (copiados em todos os casos).
 
 ## Após reiniciar
 

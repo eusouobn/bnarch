@@ -645,6 +645,13 @@ case "$DE" in
       ok "niri.sh copiado"
     fi
 
+    # Copiar mangohud-config.sh (gera config do MangoHud)
+    if fetch_script mangohud-config.sh; then
+      cp /root/scripts/mangohud-config.sh "/mnt/home/$USERNAME/scripts/"
+      chroot /mnt chown "$USERNAME:users" "/home/$USERNAME/scripts/mangohud-config.sh"
+      ok "mangohud-config.sh copiado"
+    fi
+
     # Copiar optimize-io.sh se disponível (não está no repo bnarch)
     if [ -f /root/scripts/optimize-io.sh ]; then
       cp /root/scripts/optimize-io.sh "/mnt/home/$USERNAME/scripts/"
@@ -702,6 +709,13 @@ case "$DE" in
       cp /root/scripts/hyprland.sh "/mnt/home/$USERNAME/scripts/"
       chroot /mnt chown "$USERNAME:users" "/home/$USERNAME/scripts/hyprland.sh"
       ok "hyprland.sh copiado"
+    fi
+
+    # Copiar mangohud-config.sh (gera config do MangoHud)
+    if fetch_script mangohud-config.sh; then
+      cp /root/scripts/mangohud-config.sh "/mnt/home/$USERNAME/scripts/"
+      chroot /mnt chown "$USERNAME:users" "/home/$USERNAME/scripts/mangohud-config.sh"
+      ok "mangohud-config.sh copiado"
     fi
 
     # Copiar github.sh (autenticação GitHub para o OpenCode)
