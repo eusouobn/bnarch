@@ -33,8 +33,21 @@ fi
 
 # Usar reflector se disponível, senão usar mirrorlist padrão
 if command -v reflector &>/dev/null; then
-  reflector --country Brazil --protocol https --sort rate --latest 5 --save /etc/pacman.d/mirrorlist
-  ok "Mirrors configurados via reflector"
+  if reflector --country Brazil --protocol https --sort rate --latest 5 --save /etc/pacman.d/mirrorlist; then
+    ok "Mirrors configurados via reflector"
+  else
+    warn "reflector falhou — usando fallback"
+    cat > /etc/pacman.d/mirrorlist <<'EOF'
+## Brasil
+Server = https://archlinux-br.org/repos/$repo/os/$arch
+Server = https://mirror.ufam.edu.br/archlinux/$repo/os/$arch
+Server = https://arch.mirrorcamp.com.br/repos/$repo/os/$arch
+
+## Global
+Server = https://geo.mirror.pkgbuild.com/repos/$repo/os/$arch
+Server = https://mirror.rackspace.com/archlinux/repos/$repo/os/$arch
+EOF
+  fi
 else
   # Fallback: usar mirrors brasileiros
   cat > /etc/pacman.d/mirrorlist <<'EOF'
@@ -119,8 +132,10 @@ disk_content() {
       ext4|btrfs|xfs|f2fs|luks|crypto_LUKS) lin="y" ;;
       vfat|fat32|msdos)
         hint=$(esp_family "/dev/$part")
-        [ "$hint" = "Windows" ] && win="y"
-        [ "$hint" = "Linux" ] && lin="y"
+        case "$hint" in
+          Windows) win="y" ;;
+          Linux)   lin="y" ;;
+        esac
         ;;
     esac
   done < <(lsblk -nro NAME,FSTYPE,LABEL "/dev/$disk" 2>/dev/null | tail -n +2)
@@ -148,7 +163,9 @@ print_partitions() {
     esac
     printf "    %-16s %10s  %-9s %-18s %s\n" "$part" "$size" "${fstype:-?}" "${label:-}" "$hint"
   done < <(lsblk -nro NAME,SIZE,FSTYPE,LABEL "/dev/$disk" 2>/dev/null)
-  [ "$found" = "0" ] && echo "    (sem partições)"
+  if [ "$found" = "0" ]; then
+    echo "    (sem partições)"
+  fi
 }
 
 # Detalhes completos de um disco
