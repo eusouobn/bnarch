@@ -90,29 +90,107 @@ done
 DEVICES_LIST=$FILTERED_LIST
 [ -z "$DEVICES_LIST" ] && fail "Nenhum disco disponível (todos eram Ventoy)"
 
-echo "Dispositivos disponíveis:"
+# ── Análise de discos/partições ──────────────────────────────
+# Monta a ESP somente leitura e identifica o sistema instalado nela
+esp_family() {
+  local part="$1" tmp result=""
+  tmp=$(mktemp -d 2>/dev/null) || return 0
+  if timeout 5 mount -r "$part" "$tmp" >/dev/null 2>&1; then
+    if [ -d "$tmp/EFI/Microsoft" ]; then
+      result="Windows"
+    elif ls "$tmp/EFI" >/dev/null 2>&1 && ls "$tmp/EFI" | grep -qiE "arch|grub|systemd|niri|labwc|hypr"; then
+      result="Linux"
+    else
+      result="EFI"
+    fi
+    umount "$tmp" >/dev/null 2>&1 || true
+  fi
+  rmdir "$tmp" >/dev/null 2>&1 || true
+  echo "$result"
+}
 
-for disk in $DEVICES_LIST; do
+# Conteúdo geral do disco (Windows / Linux / Windows + Linux / Vazio / Desconhecido)
+disk_content() {
+  local disk="$1" win="n" lin="n" parts=0 part fstype label hint
+  while read -r part fstype label; do
+    parts=$((parts+1))
+    case "$fstype" in
+      ntfs|BitLocker) win="y" ;;
+      ext4|btrfs|xfs|f2fs|luks|crypto_LUKS) lin="y" ;;
+      vfat|fat32|msdos)
+        hint=$(esp_family "/dev/$part")
+        [ "$hint" = "Windows" ] && win="y"
+        [ "$hint" = "Linux" ] && lin="y"
+        ;;
+    esac
+  done < <(lsblk -nro NAME,FSTYPE,LABEL "/dev/$disk" 2>/dev/null | tail -n +2)
+  if [ "$win" = "y" ] && [ "$lin" = "y" ]; then
+    echo "Windows + Linux"; return
+  fi
+  if [ "$win" = "y" ]; then echo "Windows"; return; fi
+  if [ "$lin" = "y" ]; then echo "Linux"; return; fi
+  if [ "$parts" -eq 0 ]; then echo "Vazio"; return; fi
+  echo "Desconhecido"
+}
+
+# Tabela de partições do disco
+print_partitions() {
+  local disk="$1" part size fstype label hint found=0
+  while read -r part size fstype label; do
+    [ "$part" = "$disk" ] && continue
+    found=1
+    hint=""
+    case "$fstype" in
+      ntfs|BitLocker) hint="Windows" ;;
+      ext4|btrfs|xfs|f2fs|luks|crypto_LUKS) hint="Linux" ;;
+      vfat|fat32|msdos) hint=$(esp_family "/dev/$part") ;;
+      swap) hint="Swap" ;;
+    esac
+    printf "    %-16s %10s  %-9s %-18s %s\n" "$part" "$size" "${fstype:-?}" "${label:-}" "$hint"
+  done < <(lsblk -nro NAME,SIZE,FSTYPE,LABEL "/dev/$disk" 2>/dev/null)
+  [ "$found" = "0" ] && echo "    (sem partições)"
+}
+
+# Detalhes completos de um disco
+print_disk_info() {
+  local disk="$1" MODEL SERIAL SIZE ROTA TYPE TRAN
   MODEL=$(lsblk -dno MODEL "/dev/$disk" 2>/dev/null | xargs)
   SERIAL=$(lsblk -dno SERIAL "/dev/$disk" 2>/dev/null | xargs)
   SIZE=$(lsblk -dno SIZE "/dev/$disk" 2>/dev/null | xargs)
   ROTA=$(lsblk -dno ROTA "/dev/$disk" 2>/dev/null)
   TYPE=$([ "$ROTA" = "0" ] && echo "SSD" || echo "HDD")
-  PARTS=$(lsblk -no NAME "/dev/$disk" 2>/dev/null | tail -n +2 | wc -l)
+  TRAN=$(lsblk -dno TRAN "/dev/$disk" 2>/dev/null)
 
-  echo "  $disk"
-  echo "    Modelo:  $MODEL"
-  echo "    Serial:  $SERIAL"
-  echo "    Tamanho: $SIZE ($TYPE)"
-  echo "    Partições: $PARTS"
+  echo "  $disk — $MODEL"
+  echo "    Serial:    $SERIAL"
+  echo "    Tamanho:   $SIZE [$TYPE ${TRAN:-}]"
+  echo "    Conteúdo:  $(disk_content "$disk")"
+  echo "    Partições:"
+  print_partitions "$disk"
   echo ""
+}
+
+# Opções do menu com o conteúdo do disco (ex.: "nvme0n1 (Linux)")
+disk_menu_items() {
+  MENU_ITEMS=()
+  for disk in $DEVICES_LIST; do
+    MENU_ITEMS+=("$disk ($(disk_content "$disk"))")
+  done
+}
+
+echo "Dispositivos disponíveis:"
+
+for disk in $DEVICES_LIST; do
+  print_disk_info "$disk"
 done
 
+disk_menu_items
 PS3=$'\n  Selecione o disco: '
-select INSTDISK in $DEVICES_LIST; do
+select INSTDISK in "${MENU_ITEMS[@]}"; do
   [ -n "$INSTDISK" ] && break
   echo "  Opção inválida"
 done
+INSTDISK=${INSTDISK%% *}
 ok "Disco selecionado: /dev/$INSTDISK"
 
 # Detectar NVMe
@@ -153,24 +231,16 @@ if [ "$SEPARATE_HOME" = "y" ]; then
   echo "Dispositivos disponíveis:"
 
   for disk in $DEVICES_LIST; do
-    MODEL=$(lsblk -dno MODEL "/dev/$disk" 2>/dev/null | xargs)
-    SERIAL=$(lsblk -dno SERIAL "/dev/$disk" 2>/dev/null | xargs)
-    SIZE=$(lsblk -dno SIZE "/dev/$disk" 2>/dev/null | xargs)
-    ROTA=$(lsblk -dno ROTA "/dev/$disk" 2>/dev/null)
-    TYPE=$([ "$ROTA" = "0" ] && echo "SSD" || echo "HDD")
-
-    echo "  $disk"
-    echo "    Modelo:  $MODEL"
-    echo "    Serial:  $SERIAL"
-    echo "    Tamanho: $SIZE ($TYPE)"
-    echo ""
+    print_disk_info "$disk"
   done
 
+  disk_menu_items
   PS3=$'\n  Disco para /home: '
-  select HOMEDISK in $DEVICES_LIST; do
+  select HOMEDISK in "${MENU_ITEMS[@]}"; do
     [ -n "$HOMEDISK" ] && break
     echo "  Opção inválida"
   done
+  HOMEDISK=${HOMEDISK%% *}
 
   if echo "$HOMEDISK" | grep -q "nvme\|mmcblk"; then
     HOME_PREFIX="p"
