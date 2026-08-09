@@ -457,13 +457,73 @@ for plugin_id, state in new_plugins.items():
         data['states'][plugin_id] = state
         print(f'  + {plugin_id} adicionado')
     else:
-        print(f'  = {plugin_id} já existe — mantido')
+        data['states'][plugin_id]['enabled'] = True
+        print(f'  = {plugin_id} já existia — forçado habilitado')
 
 with open(plugins_file, 'w') as f:
     json.dump(data, f, indent=2)
 
 print('plugins.json atualizado')
 " || warn "Falha ao atualizar plugins.json"
+
+# ──────────────────────────────────────────────
+# 5c2. Posicionar widgets dos plugins na barra (antes do Relógio)
+# ──────────────────────────────────────────────
+NOCTALIA_SETTINGS="$HOME/.config/noctalia/settings.json"
+if [ -f "$NOCTALIA_SETTINGS" ]; then
+  python3 -c "
+import json
+
+with open('$NOCTALIA_SETTINGS', 'r') as f:
+    data = json.load(f)
+
+usb_widget = {
+    'id': 'plugin:usb-drive-manager',
+    'defaultSettings': {
+        'autoMount': False,
+        'fileBrowser': 'yazi',
+        'terminalCommand': 'kitty',
+        'showNotifications': True,
+        'hideWhenEmpty': False,
+        'showBadge': False,
+        'iconColor': 'none'
+    }
+}
+
+clipper_widget = {
+    'id': 'plugin:clipper',
+    'defaultSettings': {
+        'enableTodoIntegration': False,
+        'pincardsEnabled': True,
+        'notecardsEnabled': True,
+        'showCloseButton': True,
+        'fullscreenMode': False,
+        'hidePanelBackground': False,
+        'autoPaste': False,
+        'autoPasteOnRightClick': False,
+        'autoPasteDelay': 300,
+        'panelWidth': 1450,
+        'panelHeight': 0,
+        'cardColors': {},
+        'customColors': {}
+    }
+}
+
+right = data.get('bar', {}).get('widgets', {}).get('right', [])
+
+right[:] = [w for w in right if w.get('id') not in ('plugin:usb-drive-manager', 'plugin:clipper')]
+
+clock_index = next((i for i, w in enumerate(right) if w.get('id') == 'Clock'), len(right))
+
+right[clock_index:clock_index] = [usb_widget, clipper_widget]
+data.setdefault('bar', {}).setdefault('widgets', {})['right'] = right
+
+with open('$NOCTALIA_SETTINGS', 'w') as f:
+    json.dump(data, f, indent=4)
+
+print('Noctalia: widgets usb-drive-manager e clipper posicionados antes do Relógio')
+" && ok "Noctalia: plugins posicionados antes do Relógio" || warn "Falha ao posicionar plugins na barra"
+fi
 
 # ──────────────────────────────────────────────
 # 5d. Configurar idle do Noctalia (desabilitar suspend automático)
