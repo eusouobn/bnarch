@@ -526,6 +526,27 @@ print('Noctalia: widgets usb-drive-manager e clipper posicionados antes do Reló
 fi
 
 # ──────────────────────────────────────────────
+# 5c3. Abrir painéis dos plugins perto do widget (canto direito)
+# ──────────────────────────────────────────────
+if [ -f "$NOCTALIA_SETTINGS" ]; then
+  python3 -c "
+import json
+
+with open('$NOCTALIA_SETTINGS', 'r') as f:
+    data = json.load(f)
+
+ps = data.setdefault('plugin_settings', {})
+ps.setdefault('usb-drive-manager', {})['usb-drive-manager_open_near_click'] = True
+ps.setdefault('clipper', {})['clipper_open_near_click'] = True
+
+with open('$NOCTALIA_SETTINGS', 'w') as f:
+    json.dump(data, f, indent=4)
+
+print('Noctalia: painéis abrem perto do widget')
+" && ok "Noctalia: painéis de plugins abrem perto do widget" || warn "Falha ao configurar abertura dos painéis"
+fi
+
+# ──────────────────────────────────────────────
 # 5d. Configurar idle do Noctalia (desabilitar suspend automático)
 # ──────────────────────────────────────────────
 NOCTALIA_SETTINGS="$HOME/.config/noctalia/settings.json"
