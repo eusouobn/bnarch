@@ -496,6 +496,29 @@ print('Noctalia idle configurado: sem suspend automático')
 fi
 
 # ──────────────────────────────────────────────
+# 5e. Desabilitar Rolagem Suave do Noctalia
+# ──────────────────────────────────────────────
+NOCTALIA_SETTINGS="$HOME/.config/noctalia/settings.json"
+if [ -f "$NOCTALIA_SETTINGS" ]; then
+  python3 -c "
+import json
+
+with open('$NOCTALIA_SETTINGS', 'r') as f:
+    data = json.load(f)
+
+# Desabilitar rolamento suave
+general = data.get('general', {})
+general['smoothScrollEnabled'] = False
+data['general'] = general
+
+with open('$NOCTALIA_SETTINGS', 'w') as f:
+    json.dump(data, f, indent=4)
+
+print('Noctalia: rolamento suave desabilitado')
+" && ok "Noctalia: Rolagem Suave desabilitada" || warn "Falha ao desabilitar Rolagem Suave do Noctalia"
+fi
+
+# ──────────────────────────────────────────────
 # 6c. Configuração NVIDIA para Wayland
 # ──────────────────────────────────────────────
 if lspci | grep -qi nvidia; then
