@@ -526,24 +526,19 @@ print('Noctalia: widgets usb-drive-manager e clipper posicionados antes do Reló
 fi
 
 # ──────────────────────────────────────────────
-# 5c3. Abrir painéis dos plugins perto do widget (canto direito)
+# 5c3. Painéis de plugins abrem perto do widget (canto direito)
 # ──────────────────────────────────────────────
-if [ -f "$NOCTALIA_SETTINGS" ]; then
-  python3 -c "
-import json
-
-with open('$NOCTALIA_SETTINGS', 'r') as f:
-    data = json.load(f)
-
-ps = data.setdefault('plugin_settings', {})
-ps.setdefault('usb-drive-manager', {})['usb-drive-manager_open_near_click'] = True
-ps.setdefault('clipper', {})['clipper_open_near_click'] = True
-
-with open('$NOCTALIA_SETTINGS', 'w') as f:
-    json.dump(data, f, indent=4)
-
-print('Noctalia: painéis abrem perto do widget')
-" && ok "Noctalia: painéis de plugins abrem perto do widget" || warn "Falha ao configurar abertura dos painéis"
+# No noctalia-shell 4.7.x (quickshell/QML) o painel de um plugin abre centralizado
+# na tela se o BarWidget não passar a si mesmo (`this`/`root`) ao abrir o painel.
+# O Clipper já faz isso; o USB Drive Manager (hennifant 1.0.0) não. Patch aqui:
+USB_BARWIDGET="$NOCTALIA_PLUGINS_DIR/usb-drive-manager/BarWidget.qml"
+if [ -f "$USB_BARWIDGET" ]; then
+  if grep -q "openPanel(screen, root)\|openPanel(screen, this)" "$USB_BARWIDGET"; then
+    info "USB Drive Manager: BarWidget já passa o botão ao abrir o painel"
+  else
+    sed -i 's/pluginApi\.openPanel(screen)/pluginApi.openPanel(screen, root)/g' "$USB_BARWIDGET" && \
+      ok "USB Drive Manager: painel abrirá perto do widget" || warn "Falha ao ajustar BarWidget do USB Drive Manager"
+  fi
 fi
 
 # ──────────────────────────────────────────────
