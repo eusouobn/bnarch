@@ -23,6 +23,15 @@ if ! command -v pacstrap &>/dev/null; then
   exit 1
 fi
 
+# ── Inicializar chaves GPG do pacman ──────────────────────
+# Corrige "GPGME error: No data" em ISOs personalizadas
+info "Inicializando chaves GPG do pacman..."
+if ! pacman-key --init; then
+  fail "Falha ao inicializar chaves GPG"
+fi
+pacman-key --populate archlinux
+ok "Chaves GPG inicializadas"
+
 # ── Configurar mirrors ────────────────────────────────────
 info "Configurando mirrors..."
 
