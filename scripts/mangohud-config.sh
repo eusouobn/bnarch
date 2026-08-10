@@ -142,6 +142,22 @@ echo ""
 # ── Gerar config ──────────────────────────────────────────
 mkdir -p "$CONF_DIR"
 
+# ── Garantir fonte Ubuntu em ~/.fonts ────────────────────
+# Steam/jogos não resolvem font_file do caminho do sistema;
+# copiar a fonte para ~/.fonts e apontar font_file pra lá resolve.
+FONT_DIR="$HOME/.fonts"
+FONT_FILE="$FONT_DIR/Ubuntu-B.ttf"
+mkdir -p "$FONT_DIR"
+if [ -f "$FONT_FILE" ]; then
+  info "Fonte Ubuntu já presente em ~/.fonts"
+elif [ -f /usr/share/fonts/ubuntu/Ubuntu-B.ttf ]; then
+  cp /usr/share/fonts/ubuntu/Ubuntu-B.ttf "$FONT_FILE"
+  fc-cache -f "$FONT_DIR" >/dev/null 2>&1 || true
+  ok "Fonte Ubuntu copiada para ~/.fonts"
+else
+  warn "Ubuntu-B.ttf não encontrado em /usr/share/fonts/ubuntu — instale ttf-ubuntu-font-family"
+fi
+
 cat > "$CONF_FILE" << EOF
 ################### Auto-gerado por mangohud-config.sh ###################
 legacy_layout=false
@@ -155,7 +171,7 @@ background_color=000000
 cellpadding_y=-0.085
 font_size=${FONT_SIZE}
 font_scale=1.0
-font_file=/usr/share/fonts/ubuntu/Ubuntu-B.ttf
+font_file=${FONT_FILE}
 text_color=FFFFFF
 position=top-left
 toggle_hud=Shift_R+F12

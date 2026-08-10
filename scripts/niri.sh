@@ -1562,6 +1562,13 @@ case "${ENABLE_MANGOHUD:-S}" in
       echo "MANGOHUD=1" >> "$ENV_FILE"
       ok "MANGOHUD=1 adicionado ao environment do Niri (reinicie a sessão para valer)"
     fi
+    # Apontar explicitamente o config file — Steam não lê o padrão sozinho
+    if grep -q "^MANGOHUD_CONFIGFILE=" "$ENV_FILE" 2>/dev/null; then
+      sed -i "s|^MANGOHUD_CONFIGFILE=.*|MANGOHUD_CONFIGFILE=$HOME/.config/MangoHud/MangoHud.conf|" "$ENV_FILE"
+    else
+      echo "MANGOHUD_CONFIGFILE=$HOME/.config/MangoHud/MangoHud.conf" >> "$ENV_FILE"
+    fi
+    ok "MANGOHUD_CONFIGFILE apontado para o MangoHud.conf"
     ;;
   *)
     warn "MangoHud não habilitado globalmente — use Shift_R+F12 para alternar por jogo"
