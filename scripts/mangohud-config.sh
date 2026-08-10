@@ -61,9 +61,9 @@ short_name() {
     fi
     # Fallback: nome completo
     [ -z "$short" ] && short="$full_name"
-    # Tirar prefixo "RX " / "GTX " (ex.: "RX 9060 XT" → "9060 XT", "GTX 1650" → "1650");
-    # "RTX" é preservado ("RTX 4070" fica "RTX 4070").
-    echo "$short" | sed 's/^\(RX\|GTX\) //'
+    # Tirar prefixo "RX " / "GTX " / "RTX " (ex.: "RX 9060 XT" → "9060 XT", "GTX 1650" → "1650", "RTX 4070" → "4070")
+    # e encurtar "SUPER" para sufixo "S" (ex.: "RTX 4070 SUPER" → "4070S").
+    echo "$short" | sed -e 's/^\(RTX\|GTX\|RX\) //' -e 's/ SUPER/S/'
 }
 
 # ── Detectar resolução e ajustar font_size ────────────────
