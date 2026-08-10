@@ -48,22 +48,22 @@ detect_gpu() {
 # ── Extrair nome curto para o HUD ────────────────────────
 short_name() {
     local full_name="$1"
+    local short=""
     # NVIDIA: "NVIDIA Corporation GeForce GTX 1650" → "GTX 1650"
     if echo "$full_name" | grep -qi "nvidia"; then
-        echo "$full_name" | grep -oiP "GeForce\s+\K[^\]\(]+" | sed 's/ *$//' || echo "$full_name"
-        return
-    fi
+        short=$(echo "$full_name" | grep -oiP "GeForce\s+\K[^\]\(]+" | sed 's/ *$//')
     # AMD: "Advanced Micro Devices, Inc. [AMD/ATI] Navi 48 [Radeon RX 9060 XT]" → "RX 9060 XT"
-    if echo "$full_name" | grep -qi "amd\|ati\|radeon"; then
-        echo "$full_name" | grep -oiP "(Radeon|GeForce)\s+\K[^\]\(]+" | sed 's/ *$//' || echo "$full_name"
-        return
-    fi
+    elif echo "$full_name" | grep -qi "amd\|ati\|radeon"; then
+        short=$(echo "$full_name" | grep -oiP "(Radeon|GeForce)\s+\K[^\]\(]+" | sed 's/ *$//')
     # Intel
-    if echo "$full_name" | grep -qi "intel"; then
-        echo "$full_name" | grep -oiP "Intel\s+\K.*" || echo "$full_name"
-        return
+    elif echo "$full_name" | grep -qi "intel"; then
+        short=$(echo "$full_name" | grep -oiP "Intel\s+\K.*")
     fi
-    echo "$full_name"
+    # Fallback: nome completo
+    [ -z "$short" ] && short="$full_name"
+    # Tirar prefixo "RX " / "GTX " (ex.: "RX 9060 XT" → "9060 XT", "GTX 1650" → "1650");
+    # "RTX" é preservado ("RTX 4070" fica "RTX 4070").
+    echo "$short" | sed 's/^\(RX\|GTX\) //'
 }
 
 # ── Detectar resolução e ajustar font_size ────────────────
