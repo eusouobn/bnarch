@@ -171,7 +171,7 @@ OFFICIAL_PACKAGES=(
   hyprland sddm
 
   # ── Barra / utilidades Wayland ──
-  waybar grim slurp wl-clipboard swaync awww
+  waybar grim slurp wl-clipboard swaync awww nwg-displays
 
   # ── Launcher / visual ──
   rofi nwg-drawer nwg-look wofi
