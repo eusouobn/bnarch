@@ -1128,6 +1128,17 @@ ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue
 ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
 EOF
 
+# Ping para jogos (Wine/EA — BF4, etc.): libera sockets ICMP não-privilegiados
+sudo sysctl -w net.ipv4.ping_group_range="0 2147483647" > /dev/null
+
+# Persistir no boot
+sudo tee /etc/sysctl.d/99-ping.conf > /dev/null <<'EOF'
+# Libera sockets ICMP não-privilegiados (ping) para processos Wine/EA
+net.ipv4.ping_group_range = 0 2147483647
+EOF
+
+ok "Ping ICMP liberado para jogos (Wine/EA)"
+
 ok "I/O otimizado — scheduler + dirty pages + cache"
 info "Reinicie para aplicar o scheduler nos discos"
 quote
