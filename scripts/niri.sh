@@ -298,7 +298,7 @@ quote
 # ──────────────────────────────────────────────
 AUR_PACKAGES=(
   niri-tearing-git nirimod-git
-  noctalia-shell noctalia-qs
+  noctalia-git
   qt6ct-kde ttf-ms-fonts
   orchis-theme adw-gtk-theme
   steam steam-devices heroic-games-launcher-bin
@@ -306,7 +306,7 @@ AUR_PACKAGES=(
 )
 
 step "🌟 Instalando pacotes AUR..."
-info "Niri-tearing-git, NiriMod, Noctalia Shell, temas e fontes Microsoft..."
+info "Niri-tearing-git, NiriMod, Noctalia v5 (git), temas e fontes Microsoft..."
 info "Confira o progresso abaixo:"
 echo ""
 
@@ -320,11 +320,11 @@ yay -S --needed --noconfirm "${AUR_PACKAGES[@]}"
 echo ""
 
 # Verificar se Noctalia foi instalado
-if command -v qs &>/dev/null; then
-  ok "Pacotes AUR instalados (incluindo Noctalia Shell)"
+if command -v noctalia &>/dev/null; then
+  ok "Pacotes AUR instalados (incluindo Noctalia v5)"
 else
-  warn "Noctalia Shell pode não ter sido instalado"
-  info "Tente manualmente: yay -S noctalia-shell noctalia-qs"
+  warn "Noctalia pode não ter sido instalado"
+  info "Tente manualmente: yay -S noctalia-git"
 fi
 quote
 
