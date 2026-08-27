@@ -1430,33 +1430,8 @@ detect_monitors() {
     done
 
     if [ -n "$card_dir" ]; then
-      # Ler EDID para resolução nativa
-      if [ -f "${card_dir}edid" ]; then
-        local edid_hex
-        edid_hex=$(xxd -p "${card_dir}edid" 2>/dev/null)
-        local edid_bin
-        edid_bin=$(echo "$edid_hex" | xxd -r -p 2>/dev/null)
-
-        # Procurar por descriptor com resolução
-        local i
-        for i in 54 72 90 108 126; do
-          local tag
-          tag=$(echo "$edid_bin" | dd bs=1 count=1 skip=$i 2>/dev/null | xxd -p)
-          if [ "$tag" = "000000000000" ]; then
-            local w h
-            w=$(printf '%d' "0x$(echo "$edid_bin" | dd bs=1 count=1 skip=$((i+2)) 2>/dev/null | xxd -p)")
-            h=$(printf '%d' "0x$(echo "$edid_bin" | dd bs=1 count=1 skip=$((i+1)) 2>/dev/null | xxd -p)")
-            if [ "$w" -gt 0 ] && [ "$h" -gt 0 ]; then
-              width=$w
-              height=$h
-              break
-            fi
-          fi
-        done
-      fi
-
-      # Fallback: ler preferred mode do kernel
-      if [ -z "$width" ] && [ -f "${card_dir}modes" ]; then
+      # Ler preferred mode do kernel (resolução)
+      if [ -f "${card_dir}modes" ]; then
         local first_mode
         first_mode=$(head -1 "${card_dir}modes" 2>/dev/null)
         if [ -n "$first_mode" ]; then
@@ -1465,23 +1440,68 @@ detect_monitors() {
         fi
       fi
 
-      # Ler refresh rate (maior disponível)
-      if [ -z "$refresh" ] && [ -f "${card_dir}modes" ]; then
-        local best_refresh="0"
-        while IFS= read -r mode_line; do
-          local mode_refresh
-          mode_refresh=$(echo "$mode_line" | grep -oP '\d+\.\d+' | head -1)
-          if [ -n "$mode_refresh" ]; then
-            if command -v bc &>/dev/null; then
-              if [ "$(echo "$mode_refresh > $best_refresh" | bc 2>/dev/null)" = "1" ]; then
-                best_refresh="$mode_refresh"
-              fi
-            else
-              best_refresh="$mode_refresh"
-            fi
-          fi
-        done < "${card_dir}modes"
-        [ "$best_refresh" != "0" ] && refresh="$best_refresh"
+      # Ler EDID para resolução nativa e maior refresh rate
+      if [ -f "${card_dir}edid" ] && [ -n "$width" ] && [ -n "$height" ]; then
+        refresh=$(python3 -c "
+import sys
+
+edid_path = sys.argv[1]
+target_w, target_h = int(sys.argv[2]), int(sys.argv[3])
+
+with open(edid_path, 'rb') as f:
+    data = f.read()
+
+best_refresh = 0.0
+
+def parse_dtd(d):
+    if len(d) < 18: return None, None, 0.0
+    pxclk = (d[0] | (d[1] << 8)) * 10000
+    h_active = d[2] + ((d[4] >> 4) & 0xF) * 256
+    h_blank = d[3] + (d[4] & 0xF) * 256
+    v_active = d[5] + ((d[7] >> 4) & 0xF) * 256
+    v_blank = d[6] + (d[7] & 0xF) * 256
+    h_total = h_active + h_blank
+    v_total = v_active + v_blank
+    if h_total == 0 or v_total == 0: return None, None, 0.0
+    refresh = pxclk / (h_total * v_total)
+    return h_active, v_active, refresh
+
+def try_dtd(d, w, h):
+    global best_refresh
+    hw, hh, r = parse_dtd(d)
+    if hw == w and hh == h and r > best_refresh:
+        best_refresh = r
+
+for blk_off in range(0, len(data), 128):
+    block = data[blk_off:blk_off+128]
+    if len(block) < 128: continue
+
+    # Bloco base (header 00 FF FF FF FF FF FF 00)
+    if block[:8] == b'\\x00\\xff\\xff\\xff\\xff\\xff\\xff\\x00':
+        for off in [54, 72, 90, 108]:
+            try_dtd(block[off:off+18], target_w, target_h)
+
+    # CTA-861 (tag 0x02, DTD offset no byte 2)
+    elif block[0] == 0x02:
+        dtd_off = block[2] if len(block) > 2 else 0
+        off = dtd_off
+        while off + 18 <= 126:
+            hw, hh, r = parse_dtd(block[off:off+18])
+            if hw is None: break
+            if hw == target_w and hh == target_h and r > best_refresh:
+                best_refresh = r
+            off += 18
+
+    # DisplayID (tag 0x70): brute-force scan por DTDs validos
+    elif block[0] == 0x70:
+        for off in range(4, 110):
+            hw, hh, r = parse_dtd(block[off:off+18])
+            if hw == target_w and hh == target_h and r > best_refresh:
+                best_refresh = r
+
+if best_refresh > 0:
+    print(f'{best_refresh:.3f}')
+" "${card_dir}edid" "$width" "$height" 2>/dev/null)
       fi
     fi
 
