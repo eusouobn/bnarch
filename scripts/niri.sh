@@ -916,11 +916,14 @@ fi
 # TRIM para SSDs
 if systemctl is-enabled fstrim.timer &>/dev/null; then
   ok "fstrim.timer já habilitado"
-elif lsblk -d -o ROTA 2>/dev/null | grep -q "^0$"; then
-  sudo systemctl enable --now fstrim.timer 2>/dev/null && \
-    ok "fstrim.timer habilitado (TRIM semanal)" || warn "Falha ao habilitar fstrim.timer"
 else
-  info "Nenhum SSD detectado — TRIM não habilitado"
+  # Detecta discos não-rotacionais (SSD/NVMe): ROTA=0 em qualquer linha
+  if lsblk -d -n -o ROTA 2>/dev/null | grep -q "^0$"; then
+    sudo systemctl enable --now fstrim.timer 2>/dev/null && \
+      ok "fstrim.timer habilitado (TRIM semanal)" || warn "Falha ao habilitar fstrim.timer"
+  else
+    info "Nenhum disco SSD/NVMe detectado — TRIM não habilitado"
+  fi
 fi
 
 # ──────────────────────────────────────────────
@@ -1300,6 +1303,82 @@ fi
 
 command -v nwg-look &>/dev/null && nwg-look -a > /dev/null 2>&1 || true
 ok "Tema escuro aplicado — suave para os olhos"
+quote
+
+# ──────────────────────────────────────────────
+# 10b. qt5ct / qt6ct — corrige configs bugadas
+#      (estilo Breeze + Papirus-Dark + fonte Ubuntu + dialogs GTK3)
+# ──────────────────────────────────────────────
+step "⚙️ Corrigindo configs qt5ct/qt6ct..."
+
+mkdir -p "$HOME/.config/qt5ct" "$HOME/.config/qt6ct"
+
+cat > "$HOME/.config/qt6ct/qt6ct.conf" << 'QT6EOF'
+[Appearance]
+color_scheme_path=/usr/share/qt6ct/colors/darker.conf
+custom_palette=true
+icon_theme=Papirus-Dark
+standard_dialogs=gtk3
+style=Breeze
+
+[Fonts]
+fixed="Ubuntu Mono,12,-1,5,700,0,0,0,0,0,0,0,0,0,0,1,Bold,0,0"
+general="Ubuntu,12,-1,5,700,0,0,0,0,0,0,0,0,0,0,1,Bold,0,0"
+
+[Interface]
+activate_item_on_single_click=1
+buttonbox_layout=0
+cursor_flash_time=1000
+dialog_buttons_have_icons=1
+double_click_interval=400
+gui_effects=@Invalid()
+keyboard_scheme=2
+menus_have_icons=true
+show_shortcuts_in_context_menus=true
+stylesheets=@Invalid()
+toolbutton_style=4
+underline_shortcut=1
+wheel_scroll_lines=3
+
+[Troubleshooting]
+force_raster_widgets=1
+ignored_applications=@Invalid()
+QT6EOF
+
+cat > "$HOME/.config/qt5ct/qt5ct.conf" << 'QT5EOF'
+[Appearance]
+color_scheme_path=/usr/share/qt5ct/colors/darker.conf
+custom_palette=true
+icon_theme=Papirus-Dark
+standard_dialogs=gtk3
+style=Breeze
+
+[Fonts]
+fixed="Ubuntu Mono,12,-1,5,50,0,0,0,0,0,Bold"
+general="Ubuntu,12,-1,5,75,0,0,0,0,0,Bold"
+
+[Interface]
+activate_item_on_single_click=1
+buttonbox_layout=0
+cursor_flash_time=1000
+dialog_buttons_have_icons=1
+double_click_interval=400
+gui_effects=@Invalid()
+keyboard_scheme=2
+menus_have_icons=true
+show_shortcuts_in_context_menus=true
+stylesheets=@Invalid()
+toolbutton_style=4
+underline_shortcut=1
+wheel_scroll_lines=3
+
+[Troubleshooting]
+force_raster_widgets=1
+ignored_applications=@Invalid()
+QT5EOF
+
+ok "qt5ct/qt6ct corrigidos — Breeze, Papirus-Dark, dialogs GTK3"
+info "Qt5/Qt6 seguem o mesmo tema escuro do resto do sistema"
 quote
 
 # ──────────────────────────────────────────────
