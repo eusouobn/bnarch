@@ -346,13 +346,13 @@ fi
 
 sudo pacman -S --needed --noconfirm \
   wine wine-mono wine-gecko \
-  giflib lib32-giflib \
+  giflib \
   libpng lib32-libpng \
   libldap lib32-libldap \
   gnutls lib32-gnutls \
-  mpg123 lib32-mpg123 \
-  openal lib32-openal \
-  v4l-utils lib32-v4l-utils \
+  mpg123 \
+  openal \
+  v4l-utils \
   libpulse lib32-libpulse \
   libgpg-error lib32-libgpg-error \
   alsa-plugins lib32-alsa-plugins \
@@ -363,8 +363,8 @@ sudo pacman -S --needed --noconfirm \
   libxinerama lib32-libxinerama \
   libgcrypt lib32-libgcrypt \
   ncurses lib32-ncurses \
-  opencl-icd-loader lib32-opencl-icd-loader \
-  libxslt lib32-libxslt \
+  ocl-icd lib32-ocl-icd \
+  libxslt \
   libva lib32-libva \
   gtk3 lib32-gtk3 \
   gst-plugins-base-libs \
@@ -659,8 +659,7 @@ if lspci | grep -qi nvidia; then
   if [ -f /etc/default/grub ]; then
     if ! grep -q "nvidia_drm.modeset=1" /etc/default/grub; then
       sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 nvidia_drm.modeset=1 nvidia_drm.fbdev=1"/' /etc/default/grub
-      sudo grub-mkconfig -o /boot/grub/grub.cfg
-      ok "GRUB: nvidia_drm.modeset=1 adicionado"
+      sudo grub-mkconfig -o /boot/grub/grub.cfg && ok "GRUB: nvidia_drm.modeset=1 adicionado" || warn "Falha ao gerar GRUB — configure manualmente"
     else
       info "GRUB já configurado para NVIDIA"
     fi
@@ -674,18 +673,18 @@ EOF
   ok "Modprobe: nvidia.conf configurado"
 
   # Instalar headers do kernel para compilar módulos NVIDIA
-  KERNEL_PKG=$(pacman -Q linux 2>/dev/null | awk '{print $1}')
+  KERNEL_PKG=$(pacman -Q linux 2>/dev/null | awk '{print $1}' || true)
   if [ -n "$KERNEL_PKG" ]; then
-    sudo pacman -S --needed --noconfirm "${KERNEL_PKG}-headers"
-    ok "Headers do kernel instalados"
+    sudo pacman -S --needed --noconfirm "${KERNEL_PKG}-headers" && ok "Headers do kernel instalados" || warn "Falha ao instalar headers do kernel"
+  else
+    info "Pacote 'linux' não encontrado — verifique se usa outro kernel (zen, lts)"
   fi
 
   # Hooks do initramfs
   sudo tee /etc/mkinitcpio.conf.d/nvidia.conf > /dev/null <<'EOF'
 MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)
 EOF
-  sudo mkinitcpio -P
-  ok "Initramfs: módulos NVIDIA incluídos"
+  sudo mkinitcpio -P && ok "Initramfs: módulos NVIDIA incluídos" || warn "Falha ao gerar initramfs — rode: sudo mkinitcpio -P"
 
   # Variáveis de ambiente para Wayland
   sudo mkdir -p /etc/environment.d
