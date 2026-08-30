@@ -316,7 +316,50 @@ if ! command -v yay &>/dev/null; then
   sudo pacman -S --needed --noconfirm yay
 fi
 
-yay -S --needed --noconfirm "${AUR_PACKAGES[@]}"
+# ──────────────────────────────────────────────
+# Niri (fork tearing) instala PRIMEIRO e sozinho.
+# O pacote 'niri' agora existe no repositório oficial 'extra'.
+# O niri-tearing-git-bin tem conflicts=('niri') e o nirimod-git depende
+# de 'niri'. Se instalados juntos, o yay tenta puxar o niri do extra para
+# satisfazer o nirimod, gerando CONFLITO/erro de dependência do niri.
+# Instalando o fork tearing primeiro, o provides=niri já resolve o nirimod.
+# ──────────────────────────────────────────────
+if ! pacman -Q niri-tearing-git-bin &>/dev/null; then
+  if pacman -Q niri &>/dev/null; then
+    info "Removendo o niri do repositório extra (conflitante com o fork tearing)..."
+    sudo pacman -Rdd --noconfirm niri > /dev/null 2>&1 || true
+    ok "niri do extra removido"
+  fi
+
+  # Garante as dependências oficiais do niri-tearing-git-bin ANTES,
+  # para que o yay não falhe/fique ambíguo ao resolver o pacote (ex: seatd).
+  info "Instalando dependências oficiais do niri (cairo, seatd, libpipewire, etc.)..."
+  sudo pacman -S --needed --noconfirm \
+    cairo glib2 libdisplay-info libinput libpipewire libxkbcommon \
+    mesa pango pixman seatd
+  ok "Dependências oficiais do niri instaladas"
+
+  # Dependências runtime do binário nocita (noctalia-git-bin) — sem elas o
+  # executável não carrega (ldd mostra "not found") e o shell não sobe.
+  info "Instalando dependências runtime do Noctalia (sdbus-cpp, libqalculate, libical, tomlplusplus, jemalloc)..."
+  sudo pacman -S --needed --noconfirm \
+    sdbus-cpp libqalculate libical tomlplusplus jemalloc
+  ok "Dependências runtime do Noctalia instaladas"
+
+  info "Instalando niri-tearing-git-bin primeiro (sozinho)..."
+  yay -S --needed --noconfirm niri-tearing-git-bin
+  ok "niri-tearing-git-bin instalado (provides=niri)"
+fi
+
+# Demais pacotes AUR — o nirimod já encontra o provides=niri instalado
+REST_AUR=()
+for pkg in "${AUR_PACKAGES[@]}"; do
+  [ "$pkg" = "niri-tearing-git-bin" ] || REST_AUR+=("$pkg")
+done
+
+if [ "${#REST_AUR[@]}" -gt 0 ]; then
+  yay -S --needed --noconfirm "${REST_AUR[@]}"
+fi
 echo ""
 
 # Verificar se Noctalia foi instalado
