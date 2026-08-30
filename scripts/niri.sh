@@ -297,8 +297,8 @@ quote
 # 5. Pacotes AUR
 # ──────────────────────────────────────────────
 AUR_PACKAGES=(
-  niri-tearing-git nirimod-git
-  noctalia-git
+  niri-tearing-git-bin nirimod-git
+  noctalia-git-bin
   qt6ct-kde ttf-ms-fonts
   orchis-theme adw-gtk-theme
   steam steam-devices heroic-games-launcher-bin
@@ -324,7 +324,7 @@ if command -v noctalia &>/dev/null; then
   ok "Pacotes AUR instalados (incluindo Noctalia v5)"
 else
   warn "Noctalia pode não ter sido instalado"
-  info "Tente manualmente: yay -S noctalia-git"
+  info "Tente manualmente: yay -S noctalia-git-bin"
 fi
 quote
 
@@ -388,11 +388,11 @@ if command -v niri &>/dev/null; then
 else
   warn "Niri não foi encontrado no PATH."
   info "Tentando reinstalar via yay..."
-  yay -S --noconfirm niri-tearing-git
+  yay -S --noconfirm niri-tearing-git-bin
   if command -v niri &>/dev/null; then
     ok "Niri instalado com sucesso!"
   else
-    err "Niri ainda não encontrado. Instale manualmente: yay -S niri-tearing-git"
+    err "Niri ainda não encontrado. Instale manualmente: yay -S niri-tearing-git-bin"
   fi
 fi
 quote
