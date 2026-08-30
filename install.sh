@@ -12,6 +12,37 @@ warn()   { echo "  ⚠ $1"; }
 fail()   { echo "  ✖ $1"; exit 1; }
 quote()  { echo ""; }
 
+# menu_select <default_idx> <op1> [op2...]
+# Imprime um menu numerado e ecoa a opção escolhida em stdout.
+# Enter sozinho seleciona o item padrão (default_idx).
+menu_select() {
+  local def="$1"; shift
+  local i=1
+  for opt in "$@"; do
+    echo "    $i) $opt" >&2
+    i=$((i+1))
+  done
+  while :; do
+    read -rp "  Selecione [$def, Enter confirma]: " c >&2
+    [ -z "$c" ] && c=$def
+    case "$c" in
+      ''|*[!0-9]*)
+        echo "  Opção inválida" >&2 ;;
+      *)
+        if [ "$c" -ge 1 ] 2>/dev/null && [ "$c" -le "$#" ]; then
+          i=1
+          for opt in "$@"; do
+            if [ "$i" -eq "$c" ]; then echo "$opt"; return 0; fi
+            i=$((i+1))
+          done
+        else
+          echo "  Opção inválida" >&2
+        fi
+        ;;
+    esac
+  done
+}
+
 # ── Verificações iniciais ──────────────────────────────────
 if [ "$EUID" -ne 0 ]; then
   echo "❌ Execute com sudo: sudo bash install.sh"
@@ -231,11 +262,7 @@ fi
 # ══════════════════════════════════════════════════════════
 title "4/12 — SISTEMA DE ARQUIVOS"
 
-PS3=$'\n  Selecione: '
-select FILESYSTEM in ext4 btrfs f2fs xfs; do
-  [ -n "$FILESYSTEM" ] && break
-  echo "  Opção inválida"
-done
+FILESYSTEM=$(menu_select 1 ext4 btrfs f2fs xfs)
 ok "Filesystem: $FILESYSTEM"
 
 # ══════════════════════════════════════════════════════════
@@ -288,32 +315,12 @@ fi
 # ══════════════════════════════════════════════════════════
 title "6/12 — SWAP"
 
-PS3=$'\n  Tipo de swap: '
-select SWAPTYPE in "Arquivo" "ZRAM"; do
-  [ -n "$SWAPTYPE" ] && break
-done
+SWAPTYPE=$(menu_select 1 "Arquivo" "ZRAM")
 
-if [ "$SWAPTYPE" = "Arquivo" ]; then
-  RAM_SIZE=$(free -g | awk '/Mem:/{print $2}')
-  if [ "$RAM_SIZE" -le 8 ]; then
-    DEFAULT_SWAP=4
-  else
-    DEFAULT_SWAP=2
-  fi
-  read -rp "  Tamanho em GB [${DEFAULT_SWAP}]: " SWAP_SIZE
-  SWAP_SIZE=${SWAP_SIZE:-$DEFAULT_SWAP}
-  ok "Swap: ${SWAP_SIZE}GB em arquivo"
-else
-  RAM_SIZE=$(free -g | awk '/Mem:/{print $2}')
-  if [ "$RAM_SIZE" -le 8 ]; then
-    DEFAULT_SWAP=4
-  else
-    DEFAULT_SWAP=2
-  fi
-  read -rp "  Tamanho em GB [${DEFAULT_SWAP}]: " SWAP_SIZE
-  SWAP_SIZE=${SWAP_SIZE:-$DEFAULT_SWAP}
-  ok "Swap: ${SWAP_SIZE}GB em ZRAM"
-fi
+DEFAULT_SWAP=8
+read -rp "  Tamanho em GB [${DEFAULT_SWAP}]: " SWAP_SIZE
+SWAP_SIZE=${SWAP_SIZE:-$DEFAULT_SWAP}
+ok "Swap: ${SWAP_SIZE}GB em ${SWAPTYPE}"
 
 # ══════════════════════════════════════════════════════════
 # 7. DRIVER DE VÍDEO
@@ -370,13 +377,16 @@ fi
 
 ok "Driver: $VIDEODRIVER"
 
-# GPU secundária (notebooks híbridos)
+# GPU dedicada adicional (notebooks híbridos / multi-GPU)
 echo ""
-echo "  Possui GPU dedicada + integrada? (Optimus/híbrido)"
-PS3=$'\n  GPU secundária: '
-select SECVID in NENHUM AMDGPU ATI INTEL Nouveau Nvidia Nvidia-Open VM; do
-  [ -n "$SECVID" ] && break
-done
+echo "  Instalar driver de vídeo adicional? (GPU dedicada + integrada / híbrida)"
+INSTALL_EXTRA=$(menu_select 1 "Não" "Sim")
+
+if [ "$INSTALL_EXTRA" = "Sim" ]; then
+  SECVID=$(menu_select 1 AMDGPU ATI INTEL Nouveau Nvidia Nvidia-Open VM)
+else
+  SECVID="NENHUM"
+fi
 
 # ══════════════════════════════════════════════════════════
 # 8. INTERFACE GRÁFICA
@@ -415,10 +425,7 @@ done
 # ══════════════════════════════════════════════════════════
 title "10/12 — KERNEL"
 
-PS3=$'\n  Selecione: '
-select KERNEL in linux linux-zen linux-lts linux-hardened; do
-  [ -n "$KERNEL" ] && break
-done
+KERNEL=$(menu_select 1 linux linux-zen linux-lts linux-hardened)
 
 # ══════════════════════════════════════════════════════════
 # 11. CONFIRMAÇÃO
