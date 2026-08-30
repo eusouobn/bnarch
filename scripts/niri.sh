@@ -297,7 +297,7 @@ quote
 # 5. Pacotes AUR
 # ──────────────────────────────────────────────
 AUR_PACKAGES=(
-  niri-tearing-git-bin nirimod-git
+  niri-tearing-git-bin nirimod-git-bin
   noctalia-git-bin
   qt6ct-kde ttf-ms-fonts
   orchis-theme adw-gtk-theme
@@ -319,7 +319,7 @@ fi
 # ──────────────────────────────────────────────
 # Niri (fork tearing) instala PRIMEIRO e sozinho.
 # O pacote 'niri' agora existe no repositório oficial 'extra'.
-# O niri-tearing-git-bin tem conflicts=('niri') e o nirimod-git depende
+# O niri-tearing-git-bin tem conflicts=('niri') e o nirimod-git-bin depende
 # de 'niri'. Se instalados juntos, o yay tenta puxar o niri do extra para
 # satisfazer o nirimod, gerando CONFLITO/erro de dependência do niri.
 # Instalando o fork tearing primeiro, o provides=niri já resolve o nirimod.
@@ -750,9 +750,9 @@ fi
 # ──────────────────────────────────────────────
 step "🚀 Configurando SDDM..."
 
-if ! pacman -Qi sddm-astronaut-theme &>/dev/null; then
+if ! pacman -Qi sddm-astronaut-theme-bin &>/dev/null; then
   info "Instalando tema astronauta..."
-  yay -S --needed --noconfirm sddm-astronaut-theme
+  yay -S --needed --noconfirm sddm-astronaut-theme-bin
 fi
 
 sudo mkdir -p /etc/sddm.conf.d
