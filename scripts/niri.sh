@@ -265,7 +265,7 @@ OFFICIAL_PACKAGES=(
   jfsutils f2fs-tools udftools e2fsprogs gvfs
   fzf ripgrep jq zenity wlr-randr
   nm-connection-editor upower udisks2 gnome-autoar smbclient
-  swayidle xxd
+  swayidle xxd noctalia
 )
 
 step "📦 Instalando pacotes oficiais..."
@@ -297,16 +297,15 @@ quote
 # 5. Pacotes AUR
 # ──────────────────────────────────────────────
 AUR_PACKAGES=(
-  niri-tearing-git-bin nirimod-git-bin
-  noctalia-git-bin
+  niri-tearing-git nirimod-git
   qt6ct-kde ttf-ms-fonts
   orchis-theme adw-gtk-theme
   steam steam-devices heroic-games-launcher-bin
-  protonplus-bin mangohud lib32-mangohud cliphist wev
+  protonup-qt-bin mangohud lib32-mangohud cliphist wev
 )
 
 step "🌟 Instalando pacotes AUR..."
-info "Niri-tearing-git, NiriMod, Noctalia v5 (git), temas e fontes Microsoft..."
+info "Niri-tearing-git, NiriMod, Noctalia (v5), temas e fontes Microsoft..."
 info "Confira o progresso abaixo:"
 echo ""
 
@@ -319,19 +318,19 @@ fi
 # ──────────────────────────────────────────────
 # Niri (fork tearing) instala PRIMEIRO e sozinho.
 # O pacote 'niri' agora existe no repositório oficial 'extra'.
-# O niri-tearing-git-bin tem conflicts=('niri') e o nirimod-git-bin depende
+# O niri-tearing-git tem conflicts=('niri') e o nirimod-git depende
 # de 'niri'. Se instalados juntos, o yay tenta puxar o niri do extra para
 # satisfazer o nirimod, gerando CONFLITO/erro de dependência do niri.
 # Instalando o fork tearing primeiro, o provides=niri já resolve o nirimod.
 # ──────────────────────────────────────────────
-if ! pacman -Q niri-tearing-git-bin &>/dev/null; then
+if ! pacman -Q niri-tearing-git &>/dev/null; then
   if pacman -Q niri &>/dev/null; then
     info "Removendo o niri do repositório extra (conflitante com o fork tearing)..."
     sudo pacman -Rdd --noconfirm niri > /dev/null 2>&1 || true
     ok "niri do extra removido"
   fi
 
-  # Garante as dependências oficiais do niri-tearing-git-bin ANTES,
+  # Garante as dependências oficiais do niri-tearing-git ANTES,
   # para que o yay não falhe/fique ambíguo ao resolver o pacote (ex: seatd).
   info "Instalando dependências oficiais do niri (cairo, seatd, libpipewire, etc.)..."
   sudo pacman -S --needed --noconfirm \
@@ -339,22 +338,15 @@ if ! pacman -Q niri-tearing-git-bin &>/dev/null; then
     mesa pango pixman seatd
   ok "Dependências oficiais do niri instaladas"
 
-  # Dependências runtime do binário nocita (noctalia-git-bin) — sem elas o
-  # executável não carrega (ldd mostra "not found") e o shell não sobe.
-  info "Instalando dependências runtime do Noctalia (sdbus-cpp, libqalculate, libical, tomlplusplus, jemalloc)..."
-  sudo pacman -S --needed --noconfirm \
-    sdbus-cpp libqalculate libical tomlplusplus jemalloc
-  ok "Dependências runtime do Noctalia instaladas"
-
-  info "Instalando niri-tearing-git-bin primeiro (sozinho)..."
-  yay -S --needed --noconfirm niri-tearing-git-bin
-  ok "niri-tearing-git-bin instalado (provides=niri)"
+  info "Instalando niri-tearing-git primeiro (sozinho)..."
+  yay -S --needed --noconfirm niri-tearing-git
+  ok "niri-tearing-git instalado (provides=niri)"
 fi
 
 # Demais pacotes AUR — o nirimod já encontra o provides=niri instalado
 REST_AUR=()
 for pkg in "${AUR_PACKAGES[@]}"; do
-  [ "$pkg" = "niri-tearing-git-bin" ] || REST_AUR+=("$pkg")
+  [ "$pkg" = "niri-tearing-git" ] || REST_AUR+=("$pkg")
 done
 
 if [ "${#REST_AUR[@]}" -gt 0 ]; then
@@ -367,7 +359,7 @@ if command -v noctalia &>/dev/null; then
   ok "Pacotes AUR instalados (incluindo Noctalia v5)"
 else
   warn "Noctalia pode não ter sido instalado"
-  info "Tente manualmente: yay -S noctalia-git-bin"
+  info "Tente manualmente: sudo pacman -S noctalia"
 fi
 quote
 
@@ -431,11 +423,11 @@ if command -v niri &>/dev/null; then
 else
   warn "Niri não foi encontrado no PATH."
   info "Tentando reinstalar via yay..."
-  yay -S --noconfirm niri-tearing-git-bin
+  yay -S --noconfirm niri-tearing-git
   if command -v niri &>/dev/null; then
     ok "Niri instalado com sucesso!"
   else
-    err "Niri ainda não encontrado. Instale manualmente: yay -S niri-tearing-git-bin"
+    err "Niri ainda não encontrado. Instale manualmente: yay -S niri-tearing-git"
   fi
 fi
 quote
@@ -746,21 +738,12 @@ EOF
 fi
 
 # ──────────────────────────────────────────────
-# 7. SDDM + Astronaut Theme
+# 7. SDDM (tema padrão)
 # ──────────────────────────────────────────────
 step "🚀 Configurando SDDM..."
 
-if ! pacman -Qi sddm-astronaut-theme-bin &>/dev/null; then
-  info "Instalando tema astronauta..."
-  yay -S --needed --noconfirm sddm-astronaut-theme-bin
-fi
-
 sudo mkdir -p /etc/sddm.conf.d
-sudo tee /etc/sddm.conf.d/theme.conf > /dev/null <<'EOF'
-[Theme]
-Current=sddm-astronaut-theme
-EOF
-ok "Tema astronauta definido como padrão"
+ok "SDDM configurado (tema padrão)"
 
 if [ -n "$PENDRIVE" ] && [ -f "$PENDRIVE/sddm.conf.tar.gz" ]; then
   sudo tar -xzf "$PENDRIVE/sddm.conf.tar.gz" -C /etc/
