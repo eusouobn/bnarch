@@ -294,12 +294,10 @@ fi
 quote
 
 # ──────────────────────────────────────────────
-# 5. Pacotes AUR (niri e nirimod agora via binário pré-compilado)
+# 5. Pacotes AUR
 # ──────────────────────────────────────────────
-# O niri-tearing e o nirimod NÃO são mais instalados do AUR.
-# Eles são instalados como binários pré-compilados (via tar sobre /) e
-# atualizados automaticamente por hooks do pacman — veja a seção 5b.
 AUR_PACKAGES=(
+  niri-tearing-git nirimod-git
   qt6ct-kde ttf-ms-fonts
   orchis-theme adw-gtk-theme
   steam steam-devices heroic-games-launcher-bin
@@ -307,7 +305,7 @@ AUR_PACKAGES=(
 )
 
 step "🌟 Instalando pacotes AUR..."
-info "Temas, fontes, Steam e ferramentas de jogo (niri/nirimod via binário)..."
+info "Niri-tearing-git, NiriMod, Noctalia (v5), temas e fontes Microsoft..."
 info "Confira o progresso abaixo:"
 echo ""
 
@@ -317,51 +315,44 @@ if ! command -v yay &>/dev/null; then
   sudo pacman -S --needed --noconfirm yay
 fi
 
-if [ "${#AUR_PACKAGES[@]}" -gt 0 ]; then
-  yay -S --needed --noconfirm "${AUR_PACKAGES[@]}"
+# ──────────────────────────────────────────────
+# Niri (fork tearing) instala PRIMEIRO e sozinho.
+# O pacote 'niri' agora existe no repositório oficial 'extra'.
+# O niri-tearing-git tem conflicts=('niri') e o nirimod-git depende
+# de 'niri'. Se instalados juntos, o yay tenta puxar o niri do extra para
+# satisfazer o nirimod, gerando CONFLITO/erro de dependência do niri.
+# Instalando o fork tearing primeiro, o provides=niri já resolve o nirimod.
+# ──────────────────────────────────────────────
+if ! pacman -Q niri-tearing-git &>/dev/null; then
+  if pacman -Q niri &>/dev/null; then
+    info "Removendo o niri do repositório extra (conflitante com o fork tearing)..."
+    sudo pacman -Rdd --noconfirm niri > /dev/null 2>&1 || true
+    ok "niri do extra removido"
+  fi
+
+  # Garante as dependências oficiais do niri-tearing-git ANTES,
+  # para que o yay não falhe/fique ambíguo ao resolver o pacote (ex: seatd).
+  info "Instalando dependências oficiais do niri (cairo, seatd, libpipewire, etc.)..."
+  sudo pacman -S --needed --noconfirm \
+    cairo glib2 libdisplay-info libinput libpipewire libxkbcommon \
+    mesa pango pixman seatd
+  ok "Dependências oficiais do niri instaladas"
+
+  info "Instalando niri-tearing-git primeiro (sozinho)..."
+  yay -S --needed --noconfirm niri-tearing-git
+  ok "niri-tearing-git instalado (provides=niri)"
+fi
+
+# Demais pacotes AUR — o nirimod já encontra o provides=niri instalado
+REST_AUR=()
+for pkg in "${AUR_PACKAGES[@]}"; do
+  [ "$pkg" = "niri-tearing-git" ] || REST_AUR+=("$pkg")
+done
+
+if [ "${#REST_AUR[@]}" -gt 0 ]; then
+  yay -S --needed --noconfirm "${REST_AUR[@]}"
 fi
 echo ""
-
-# ──────────────────────────────────────────────
-# 5a. Instalar niri-tearing-bin + nirimod (binários pré-compilados)
-#     e configurar hooks de atualização automática via pacman.
-# ──────────────────────────────────────────────
-# Os binários são publicados no GitHub (repos eusouobn/*-bin-releases),
-# extraídos sobre / e versionados em /usr/share/*/version. Um hook do
-# pacman roda o updater a cada transação, mantendo tudo atualizado sem AUR.
-step "📦 Instalando niri-tearing-bin e nirimod (binários pré-compilados + hooks)..."
-
-# Dependências de runtime do niri (oficiais)
-info "Instalando dependências oficiais do niri (cairo, seatd, libpipewire, etc.)..."
-sudo pacman -S --needed --noconfirm \
-  curl cairo glib2 libdisplay-info libinput libpipewire libxkbcommon \
-  mesa pango pixman seatd
-ok "Dependências oficiais do niri instaladas"
-
-# Dependências do nirimod
-sudo pacman -S --needed --noconfirm \
-  gtk4 libadwaita python python-gobject python-cairo hicolor-icon-theme
-ok "Dependências oficiais do nirimod instaladas"
-
-# Instala os binários + updater + hook de atualização automática (1 comando)
-# Cada install.sh baixa o binário, instala /usr/local/bin/<updater> e o hook
-# do pacman, e faz o primeiro download/versão.
-info "Instalando niri-tearing-bin (binário + updater + hook)..."
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/eusouobn/niri-tearing-bin-releases/main/install.sh)"
-ok "niri-tearing-bin instalado"
-
-info "Instalando nirimod (binário + updater + hook)..."
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/eusouobn/nirimod-bin-releases/main/install.sh)"
-ok "nirimod instalado"
-
-# Remove o niri do extra se estiver instalado (conflito de /usr/bin/niri)
-if pacman -Q niri &>/dev/null; then
-  info "Removendo o niri do repositório extra (substituído pelo binário)..."
-  sudo pacman -Rdd --noconfirm niri > /dev/null 2>&1 || true
-  ok "niri do extra removido"
-fi
-ok "niri-tearing-bin e nirimod instalados (hooks ativos)"
-quote
 
 # Verificar se Noctalia foi instalado
 if command -v noctalia &>/dev/null; then
@@ -431,12 +422,12 @@ if command -v niri &>/dev/null; then
   ok "Niri detectado: $(niri --version 2>/dev/null || echo 'versão desconhecida')"
 else
   warn "Niri não foi encontrado no PATH."
-  info "Tentando atualizar o binário via updater..."
-  sudo /usr/local/bin/niri-tearing-bin-update.sh || true
+  info "Tentando reinstalar via yay..."
+  yay -S --noconfirm niri-tearing-git
   if command -v niri &>/dev/null; then
     ok "Niri instalado com sucesso!"
   else
-    err "Niri ainda não encontrado. Instale manualmente: sudo /usr/local/bin/niri-tearing-bin-update.sh"
+    err "Niri ainda não encontrado. Instale manualmente: yay -S niri-tearing-git"
   fi
 fi
 quote
@@ -1025,60 +1016,6 @@ else
   ok "polkit-gnome já está no config.kdl"
 fi
 quote
-
-# ──────────────────────────────────────────────
-# 8g. Noctalia via serviço systemd user (sobe após o compositor pronto)
-# ──────────────────────────────────────────────
-# O antigo "spawn-at-startup noctalia --daemon" rodava cedo demais, antes do
-# compositor estar pronto, e o shell morria com "failed to connect to Wayland
-# display". Este serviço sobe o Noctalia DEPOIS da graphical-session.target e
-# re-tenta (Restart=on-failure) caso o socket ainda não esteja disponível.
-if command -v noctalia &>/dev/null; then
-  step "🌙 Garantindo Noctalia via serviço systemd user..."
-
-  NOCTALIA_UNIT="$HOME/.config/systemd/user/noctalia.service"
-
-  if [ ! -f "$NOCTALIA_UNIT" ]; then
-    mkdir -p "$HOME/.config/systemd/user"
-  fi
-
-  cat > "$NOCTALIA_UNIT" << 'NOCTALIAEOF'
-[Unit]
-Description=Noctalia - Wayland desktop shell
-After=graphical-session.target
-Wants=graphical-session.target
-
-[Service]
-Type=exec
-# IMPORTANTE: roda em FOREGROUND (sem --daemon). O --daemon do Noctalia faz
-# double-fork: o pai sai com status 0 e, sob Type=exec, o systemd encerra a
-# árvore (matando o filho daemon) e não re-tenta por ter exit=0. Em foreground
-# o systemd monitora o processo vivo; se cair, Restart re-tenta.
-ExecStart=/usr/bin/noctalia
-Restart=on-failure
-RestartSec=2
-TimeoutStopSec=10
-Environment=XDG_SESSION_TYPE=wayland
-PassEnvironment=WAYLAND_DISPLAY
-
-[Install]
-WantedBy=graphical-session.target
-NOCTALIAEOF
-
-  systemctl --user daemon-reload 2>/dev/null || true
-  systemctl --user enable noctalia.service 2>/dev/null || true
-  ok "noctalia.service criado e habilitado (systemd user)"
-
-  # Remove o antigo spawn-at-startup que subia cedo demais (evita duplicação)
-  if grep -qF 'spawn-at-startup "noctalia" "--daemon"' "$CONFIG_KDL" 2>/dev/null; then
-    sed -i '/spawn-at-startup "noctalia" "--daemon"/d' "$CONFIG_KDL"
-    ok "Removido spawn-at-startup do noctalia (agora via systemd)"
-  fi
-  quote
-else
-  skip "Noctalia não encontrado — pular configuração do serviço"
-  quote
-fi
 
 # ──────────────────────────────────────────────
 # 9. Ativar serviços
