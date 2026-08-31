@@ -334,7 +334,7 @@ step "📦 Instalando niri-tearing-bin e nirimod (binários pré-compilados + ho
 # Dependências de runtime do niri (oficiais)
 info "Instalando dependências oficiais do niri (cairo, seatd, libpipewire, etc.)..."
 sudo pacman -S --needed --noconfirm \
-  cairo glib2 libdisplay-info libinput libpipewire libxkbcommon \
+  curl cairo glib2 libdisplay-info libinput libpipewire libxkbcommon \
   mesa pango pixman seatd
 ok "Dependências oficiais do niri instaladas"
 
@@ -343,45 +343,16 @@ sudo pacman -S --needed --noconfirm \
   gtk4 libadwaita python python-gobject python-cairo hicolor-icon-theme
 ok "Dependências oficiais do nirimod instaladas"
 
-# Baixa e instala os scripts de atualização em /usr/local/bin
-install_bin_updater() {
-  local name="$1" repo="$2"
-  info "Instalando $name (de $repo)..."
-  if command -v curl >/dev/null 2>&1; then
-    sudo curl -fsSL \
-      "https://raw.githubusercontent.com/$repo/main/$name" \
-      -o "/usr/local/bin/$name"
-  else
-    sudo pacman -S --needed --noconfirm curl > /dev/null 2>&1 || true
-    sudo curl -fsSL \
-      "https://raw.githubusercontent.com/$repo/main/$name" \
-      -o "/usr/local/bin/$name"
-  fi
-  sudo chmod +x "/usr/local/bin/$name"
-  ok "$name instalado em /usr/local/bin/$name"
-}
+# Instala os binários + updater + hook de atualização automática (1 comando)
+# Cada install.sh baixa o binário, instala /usr/local/bin/<updater> e o hook
+# do pacman, e faz o primeiro download/versão.
+info "Instalando niri-tearing-bin (binário + updater + hook)..."
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/eusouobn/niri-tearing-bin-releases/main/install.sh)"
+ok "niri-tearing-bin instalado"
 
-install_bin_updater "niri-tearing-bin-update.sh" "eusouobn/niri-tearing-bin-releases"
-install_bin_updater "nirimod-update.sh"          "eusouobn/nirimod-bin-releases"
-
-# Instala os hooks do pacman (atualização automática a cada transação)
-install_pacman_hook() {
-  local hook="$1" repo="$2"
-  info "Instalando hook do pacman: $hook ..."
-  sudo curl -fsSL \
-    "https://raw.githubusercontent.com/$repo/main/$hook" \
-    -o "/etc/pacman.d/hooks/$hook"
-  ok "Hook instalado: /etc/pacman.d/hooks/$hook"
-}
-
-sudo mkdir -p /etc/pacman.d/hooks
-install_pacman_hook "90-niri-tearing-bin.hook" "eusouobn/niri-tearing-bin-releases"
-install_pacman_hook "90-nirimod.hook"          "eusouobn/nirimod-bin-releases"
-
-# Instala/imprime a versão atual dos binários (primeiro download)
-info "Instalando a versão inicial dos binários (primeiro download)..."
-sudo /usr/local/bin/niri-tearing-bin-update.sh || true
-sudo /usr/local/bin/nirimod-update.sh || true
+info "Instalando nirimod (binário + updater + hook)..."
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/eusouobn/nirimod-bin-releases/main/install.sh)"
+ok "nirimod instalado"
 
 # Remove o niri do extra se estiver instalado (conflito de /usr/bin/niri)
 if pacman -Q niri &>/dev/null; then
