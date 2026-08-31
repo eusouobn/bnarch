@@ -1027,6 +1027,56 @@ fi
 quote
 
 # ──────────────────────────────────────────────
+# 8g. Noctalia via serviço systemd user (sobe após o compositor pronto)
+# ──────────────────────────────────────────────
+# O antigo "spawn-at-startup noctalia --daemon" rodava cedo demais, antes do
+# compositor estar pronto, e o shell morria com "failed to connect to Wayland
+# display". Este serviço sobe o Noctalia DEPOIS da graphical-session.target e
+# re-tenta (Restart=on-failure) caso o socket ainda não esteja disponível.
+if command -v noctalia &>/dev/null; then
+  step "🌙 Garantindo Noctalia via serviço systemd user..."
+
+  NOCTALIA_UNIT="$HOME/.config/systemd/user/noctalia.service"
+
+  if [ ! -f "$NOCTALIA_UNIT" ]; then
+    mkdir -p "$HOME/.config/systemd/user"
+  fi
+
+  cat > "$NOCTALIA_UNIT" << 'NOCTALIAEOF'
+[Unit]
+Description=Noctalia - Wayland desktop shell
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/noctalia --daemon
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=10
+Environment=XDG_SESSION_TYPE=wayland
+PassEnvironment=WAYLAND_DISPLAY
+
+[Install]
+WantedBy=graphical-session.target
+NOCTALIAEOF
+
+  systemctl --user daemon-reload 2>/dev/null || true
+  systemctl --user enable noctalia.service 2>/dev/null || true
+  ok "noctalia.service criado e habilitado (systemd user)"
+
+  # Remove o antigo spawn-at-startup que subia cedo demais (evita duplicação)
+  if grep -qF 'spawn-at-startup "noctalia" "--daemon"' "$CONFIG_KDL" 2>/dev/null; then
+    sed -i '/spawn-at-startup "noctalia" "--daemon"/d' "$CONFIG_KDL"
+    ok "Removido spawn-at-startup do noctalia (agora via systemd)"
+  fi
+  quote
+else
+  skip "Noctalia não encontrado — pular configuração do serviço"
+  quote
+fi
+
+# ──────────────────────────────────────────────
 # 9. Ativar serviços
 # ──────────────────────────────────────────────
 step "⚡ Ativando serviços do sistema..."
