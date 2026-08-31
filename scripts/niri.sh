@@ -1050,7 +1050,11 @@ Wants=graphical-session.target
 
 [Service]
 Type=exec
-ExecStart=/usr/bin/noctalia --daemon
+# IMPORTANTE: roda em FOREGROUND (sem --daemon). O --daemon do Noctalia faz
+# double-fork: o pai sai com status 0 e, sob Type=exec, o systemd encerra a
+# árvore (matando o filho daemon) e não re-tenta por ter exit=0. Em foreground
+# o systemd monitora o processo vivo; se cair, Restart re-tenta.
+ExecStart=/usr/bin/noctalia
 Restart=on-failure
 RestartSec=2
 TimeoutStopSec=10
