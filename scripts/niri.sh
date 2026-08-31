@@ -294,10 +294,12 @@ fi
 quote
 
 # ──────────────────────────────────────────────
-# 5. Pacotes AUR
+# 5. Pacotes AUR (niri e nirimod agora via binário pré-compilado)
 # ──────────────────────────────────────────────
+# O niri-tearing e o nirimod NÃO são mais instalados do AUR.
+# Eles são instalados como binários pré-compilados (via tar sobre /) e
+# atualizados automaticamente por hooks do pacman — veja a seção 5b.
 AUR_PACKAGES=(
-  niri-tearing-git nirimod-git
   qt6ct-kde ttf-ms-fonts
   orchis-theme adw-gtk-theme
   steam steam-devices heroic-games-launcher-bin
@@ -305,7 +307,7 @@ AUR_PACKAGES=(
 )
 
 step "🌟 Instalando pacotes AUR..."
-info "Niri-tearing-git, NiriMod, Noctalia (v5), temas e fontes Microsoft..."
+info "Temas, fontes, Steam e ferramentas de jogo (niri/nirimod via binário)..."
 info "Confira o progresso abaixo:"
 echo ""
 
@@ -315,44 +317,80 @@ if ! command -v yay &>/dev/null; then
   sudo pacman -S --needed --noconfirm yay
 fi
 
-# ──────────────────────────────────────────────
-# Niri (fork tearing) instala PRIMEIRO e sozinho.
-# O pacote 'niri' agora existe no repositório oficial 'extra'.
-# O niri-tearing-git tem conflicts=('niri') e o nirimod-git depende
-# de 'niri'. Se instalados juntos, o yay tenta puxar o niri do extra para
-# satisfazer o nirimod, gerando CONFLITO/erro de dependência do niri.
-# Instalando o fork tearing primeiro, o provides=niri já resolve o nirimod.
-# ──────────────────────────────────────────────
-if ! pacman -Q niri-tearing-git &>/dev/null; then
-  if pacman -Q niri &>/dev/null; then
-    info "Removendo o niri do repositório extra (conflitante com o fork tearing)..."
-    sudo pacman -Rdd --noconfirm niri > /dev/null 2>&1 || true
-    ok "niri do extra removido"
-  fi
-
-  # Garante as dependências oficiais do niri-tearing-git ANTES,
-  # para que o yay não falhe/fique ambíguo ao resolver o pacote (ex: seatd).
-  info "Instalando dependências oficiais do niri (cairo, seatd, libpipewire, etc.)..."
-  sudo pacman -S --needed --noconfirm \
-    cairo glib2 libdisplay-info libinput libpipewire libxkbcommon \
-    mesa pango pixman seatd
-  ok "Dependências oficiais do niri instaladas"
-
-  info "Instalando niri-tearing-git primeiro (sozinho)..."
-  yay -S --needed --noconfirm niri-tearing-git
-  ok "niri-tearing-git instalado (provides=niri)"
-fi
-
-# Demais pacotes AUR — o nirimod já encontra o provides=niri instalado
-REST_AUR=()
-for pkg in "${AUR_PACKAGES[@]}"; do
-  [ "$pkg" = "niri-tearing-git" ] || REST_AUR+=("$pkg")
-done
-
-if [ "${#REST_AUR[@]}" -gt 0 ]; then
-  yay -S --needed --noconfirm "${REST_AUR[@]}"
+if [ "${#AUR_PACKAGES[@]}" -gt 0 ]; then
+  yay -S --needed --noconfirm "${AUR_PACKAGES[@]}"
 fi
 echo ""
+
+# ──────────────────────────────────────────────
+# 5a. Instalar niri-tearing-bin + nirimod (binários pré-compilados)
+#     e configurar hooks de atualização automática via pacman.
+# ──────────────────────────────────────────────
+# Os binários são publicados no GitHub (repos eusouobn/*-bin-releases),
+# extraídos sobre / e versionados em /usr/share/*/version. Um hook do
+# pacman roda o updater a cada transação, mantendo tudo atualizado sem AUR.
+step "📦 Instalando niri-tearing-bin e nirimod (binários pré-compilados + hooks)..."
+
+# Dependências de runtime do niri (oficiais)
+info "Instalando dependências oficiais do niri (cairo, seatd, libpipewire, etc.)..."
+sudo pacman -S --needed --noconfirm \
+  cairo glib2 libdisplay-info libinput libpipewire libxkbcommon \
+  mesa pango pixman seatd
+ok "Dependências oficiais do niri instaladas"
+
+# Dependências do nirimod
+sudo pacman -S --needed --noconfirm \
+  gtk4 libadwaita python python-gobject python-cairo hicolor-icon-theme
+ok "Dependências oficiais do nirimod instaladas"
+
+# Baixa e instala os scripts de atualização em /usr/local/bin
+install_bin_updater() {
+  local name="$1" repo="$2"
+  info "Instalando $name (de $repo)..."
+  if command -v curl >/dev/null 2>&1; then
+    sudo curl -fsSL \
+      "https://raw.githubusercontent.com/$repo/main/$name" \
+      -o "/usr/local/bin/$name"
+  else
+    sudo pacman -S --needed --noconfirm curl > /dev/null 2>&1 || true
+    sudo curl -fsSL \
+      "https://raw.githubusercontent.com/$repo/main/$name" \
+      -o "/usr/local/bin/$name"
+  fi
+  sudo chmod +x "/usr/local/bin/$name"
+  ok "$name instalado em /usr/local/bin/$name"
+}
+
+install_bin_updater "niri-tearing-bin-update.sh" "eusouobn/niri-tearing-bin-releases"
+install_bin_updater "nirimod-update.sh"          "eusouobn/nirimod-bin-releases"
+
+# Instala os hooks do pacman (atualização automática a cada transação)
+install_pacman_hook() {
+  local hook="$1" repo="$2"
+  info "Instalando hook do pacman: $hook ..."
+  sudo curl -fsSL \
+    "https://raw.githubusercontent.com/$repo/main/$hook" \
+    -o "/etc/pacman.d/hooks/$hook"
+  ok "Hook instalado: /etc/pacman.d/hooks/$hook"
+}
+
+sudo mkdir -p /etc/pacman.d/hooks
+install_pacman_hook "90-niri-tearing-bin.hook" "eusouobn/niri-tearing-bin-releases"
+install_pacman_hook "90-nirimod.hook"          "eusouobn/nirimod-bin-releases"
+
+# Instala/imprime a versão atual dos binários (primeiro download)
+info "Instalando a versão inicial dos binários (primeiro download)..."
+sudo /usr/local/bin/niri-tearing-bin-update.sh || true
+sudo /usr/local/bin/nirimod-update.sh || true
+
+# Remove o niri do extra se estiver instalado (conflito de /usr/bin/niri)
+if pacman -Q niri &>/dev/null; then
+  info "Removendo o niri do repositório extra (substituído pelo binário)..."
+  sudo pacman -Rdd --noconfirm niri > /dev/null 2>&1 || true
+  ok "niri do extra removido"
+fi
+ok "niri-tearing-bin e nirimod instalados (hooks ativos)"
+quote
 
 # Verificar se Noctalia foi instalado
 if command -v noctalia &>/dev/null; then
@@ -422,12 +460,12 @@ if command -v niri &>/dev/null; then
   ok "Niri detectado: $(niri --version 2>/dev/null || echo 'versão desconhecida')"
 else
   warn "Niri não foi encontrado no PATH."
-  info "Tentando reinstalar via yay..."
-  yay -S --noconfirm niri-tearing-git
+  info "Tentando atualizar o binário via updater..."
+  sudo /usr/local/bin/niri-tearing-bin-update.sh || true
   if command -v niri &>/dev/null; then
     ok "Niri instalado com sucesso!"
   else
-    err "Niri ainda não encontrado. Instale manualmente: yay -S niri-tearing-git"
+    err "Niri ainda não encontrado. Instale manualmente: sudo /usr/local/bin/niri-tearing-bin-update.sh"
   fi
 fi
 quote
